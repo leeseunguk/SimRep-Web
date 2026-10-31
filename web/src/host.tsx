@@ -6,6 +6,7 @@ import type { Refusal } from "../.app-src/refusals";
 import { openProject } from "../.app-src/state/project";
 import { useApp } from "../.app-src/state/store";
 import { download, pickFiles } from "./pickers";
+import { storeTransaction } from "./storage";
 import type { Boot } from "./main";
 import { messages } from "./messages";
 import styles from "./host.module.css";
@@ -37,6 +38,32 @@ const NEEDS: Partial<Record<HostFeature, string[]>> = {
 
 export function installHost(boot: Boot) {
   addMessages(messages);
+  // The native recent-project localStorage value is only a UI hint. Read the
+  // authoritative namespace and documents together when another tab publishes.
+  let refresh = Promise.resolve();
+  const refreshProjects = () => {
+    refresh = refresh.then(async () => {
+      const recent = await storeTransaction(boot.store, async store => {
+        const paths = (await store.keys("/projects")).filter(p => /^\/projects\/[^/]+\/[^/]+\.simrep$/i.test(p));
+        const projects = [];
+        for (const path of paths) {
+          const bytes = await store.get(path);
+          if (!bytes) continue;
+          const doc = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as { savedAt?: string };
+          const timestamp = typeof doc.savedAt === "string" ? Date.parse(doc.savedAt) : NaN;
+          const savedAt = Number.isFinite(timestamp) ? timestamp : useApp.getState().recent.find(p => p.path === path)?.savedAt ?? Date.now();
+          projects.push({ path, name: path.split("/").pop()!.replace(/\.simrep$/i, ""), savedAt });
+        }
+        return projects.sort((a, b) => b.savedAt - a.savedAt);
+      });
+      useApp.setState({ recent });
+    }).catch(error => console.warn("Project list refresh failed", error));
+  };
+  const publications = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel("simrep-web:store");
+  publications?.addEventListener("message", refreshProjects);
+  window.addEventListener("simrep-storage-change", refreshProjects);
+  window.addEventListener("storage", refreshProjects);
+  window.addEventListener("pagehide", () => publications?.close(), { once: true });
   const supported = new Set(boot.backend?.capabilities.supportedCommands ?? []);
   const unavailable = (feature: HostFeature): Refusal | null => {
     switch (feature) {
@@ -58,6 +85,7 @@ export function installHost(boot: Boot) {
   const host: Host = {
     unavailable,
     async connect() {
+      refreshProjects();
       const app = useApp.getState();
       const version = __SIMREP_WEB_VERSION__;
       app.setRuntime({ kind: "web", version });

@@ -29,16 +29,25 @@ async function storedProject(page: Page, name: string) {
 }
 const projectTitle = (page: Page, name: string) => page.locator("header").getByTitle(`/projects/${name}/${name}.simrep`, { exact: true });
 test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem("simrep.tour", "seen")); });
-test("archive name clashes offer cancel, rename and explicitly confirmed replacement", async ({ page, browserName }, info) => {
-  await page.goto("/"); await expect(page.getByTestId("web-compute")).toBeVisible(); await choose(page, await archive("original"), browserName); await expect(projectTitle(page, "review-imported")).toBeVisible();
-  await page.locator('[data-tour="home"]').click(); await choose(page, await archive("replacement"), browserName);
-  const dialog = page.getByRole("dialog", { name: "Import project name clash" }); await expect(dialog).toBeVisible(); await page.screenshot({ path: info.outputPath("import-clash.png") });
-  await dialog.getByRole("button", { name: "Cancel", exact: true }).click(); await expect(dialog).not.toBeVisible(); expect((await storedProject(page, "review-imported"))?.savedAt).toBe("original");
-  await choose(page, await archive("not-confirmed"), browserName); const decline = page.waitForEvent("dialog").then(d => d.dismiss()); await dialog.getByRole("button", { name: "Replace", exact: true }).click(); await decline; expect((await storedProject(page, "review-imported"))?.savedAt).toBe("original");
-  await choose(page, await archive("renamed"), browserName); const renamed = page.waitForEvent("dialog").then(d => d.accept("review-renamed")); await dialog.getByRole("button", { name: "Rename", exact: true }).click(); await renamed;
-  await expect(projectTitle(page, "review-renamed")).toBeVisible(); expect((await storedProject(page, "review-imported"))?.savedAt).toBe("original"); expect((await storedProject(page, "review-renamed"))?.savedAt).toBe("renamed");
-  await page.locator('[data-tour="home"]').click(); await choose(page, await archive("replacement"), browserName); const confirm = page.waitForEvent("dialog").then(d => d.accept()); await dialog.getByRole("button", { name: "Replace", exact: true }).click(); await confirm;
-  await expect(projectTitle(page, "review-imported")).toBeVisible(); expect((await storedProject(page, "review-imported"))?.savedAt).toBe("replacement");
+test("archive name clashes allocate numeric suffixes and preserve every earlier import", async ({ page, browserName }, info) => {
+  await page.goto("/");
+  await expect(page.getByTestId("web-compute")).toBeVisible();
+  const names = ["review-imported", "review-imported-2", "review-imported-3"];
+  const markers = ["original", "second", "third"];
+  for (let i = 0; i < names.length; i++) {
+    if (i) await page.locator('[data-tour="home"]').click();
+    await choose(page, await archive(markers[i]!), browserName);
+    await expect(projectTitle(page, names[i]!)).toBeVisible();
+    for (let earlier = 0; earlier <= i; earlier++) expect((await storedProject(page, names[earlier]!))?.savedAt).toBe(markers[earlier]);
+  }
+  await page.locator('[data-tour="home"]').click();
+  await page.screenshot({ path: info.outputPath("import-clash.png") });
+  await page.reload();
+  await expect(page.getByTestId("web-compute")).toBeVisible();
+  for (let i = 0; i < names.length; i++) {
+    await expect(page.getByTitle(`/projects/${names[i]}/${names[i]}.simrep`, { exact: true })).toBeVisible();
+    expect((await storedProject(page, names[i]!))?.savedAt).toBe(markers[i]);
+  }
 });
 test("a saved einzel project archives and reopens in an isolated namespace", async ({ page, browserName }, info) => {
   await page.goto("/"); await expect(page.getByTestId("web-compute")).toBeVisible(); await page.locator('[data-tour="template-einzel"]').click(); await expect(page.getByText("Einzel lens is ready")).toBeVisible({ timeout: 90_000 });

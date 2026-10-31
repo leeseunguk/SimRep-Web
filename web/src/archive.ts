@@ -1,6 +1,5 @@
 import { parseProject } from "../.app-src/state/projectFormat";
-import type { FileStore } from "./storage";
-import { safePath } from "./limits";
+import { storeTransaction, type FileStore } from "./storage";
 import { readZip } from "./zip";
 
 /** Validate and stage all members before publishing into this project's own namespace. */
@@ -23,46 +22,31 @@ export async function importProject(bytes: Uint8Array, store: FileStore): Promis
   for (const m of doc.meshes) if (!record(m) || !ref(m.file) || typeof m.visible !== "boolean" || typeof m.units !== "string") throw new Error("invalid project mesh");
   for (const e of entries) if (!["files", "projects", "exports"].includes(e.path.split("/")[0]!)) throw new Error(`unexpected folder in archive: ${e.path}`);
   const originalName = project.path.split("/").pop()!.replace(/\.simrep$/i, "");
-  let name = `${originalName}-imported`, root = `/projects/${name}`;
-  if ((await store.keys(root)).length) {
-    const choice = await importChoice(name);
-    if (choice === "cancel") throw new Error("project import cancelled");
-    if (choice === "replace") {
-      if (!window.confirm(`Replace imported project "${name}" and all its files? This cannot be undone.`)) throw new Error("project import cancelled");
-    } else {
-      const answer = window.prompt("New project name", `${name}-2`);
-      if (!answer || !safePath(answer) || answer.includes("/")) throw new Error("invalid project name or import cancelled");
-      name = answer; root = `/projects/${name}`;
-      if ((await store.keys(root)).length) throw new Error("that project name already exists; choose a new name");
+  return storeTransaction(store, async locked => {
+    // Allocation and publication are one transaction, including across tabs. Never replace
+    // an existing import: choose the first available deterministic numeric suffix.
+    const base = `${originalName}-imported`;
+    let name = base, root = `/projects/${name}`, suffix = 2;
+    while ((await locked.keys(root)).length) {
+      name = `${base}-${suffix++}`;
+      root = `/projects/${name}`;
     }
-  }
-  const destination = `${root}/${name}.simrep`;
-  const paths = new Map(entries.map(e => [`/${e.path}`, e === project ? destination : e.path.startsWith(`${project.path}.d/`) ? `${destination}.d/${e.path.slice(project.path.length + 3)}` : `${root}/resources/${e.path}`]));
-  const rewrite = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(rewrite);
-    if (record(value)) {
-      if (typeof value.absolute === "string" && typeof value.path === "string") {
-        const old = value.absolute.startsWith("/") ? value.absolute : `/${value.absolute}`, mapped = paths.get(old);
-        if (!mapped) throw new Error(`project references a file absent from the archive: ${value.absolute}`);
-        return { ...value, path: mapped.slice(root.length + 1), absolute: mapped };
+    const destination = `${root}/${name}.simrep`;
+    const paths = new Map(entries.map(e => [`/${e.path}`, e === project ? destination : e.path.startsWith(`${project.path}.d/`) ? `${destination}.d/${e.path.slice(project.path.length + 3)}` : `${root}/resources/${e.path}`]));
+    const rewrite = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(rewrite);
+      if (record(value)) {
+        if (typeof value.absolute === "string" && typeof value.path === "string") {
+          const old = value.absolute.startsWith("/") ? value.absolute : `/${value.absolute}`, mapped = paths.get(old);
+          if (!mapped) throw new Error(`project references a file absent from the archive: ${value.absolute}`);
+          return { ...value, path: mapped.slice(root.length + 1), absolute: mapped };
+        }
+        return Object.fromEntries(Object.entries(value).filter(([k]) => k !== "recovery").map(([k, v]) => [k, k === "outputDir" && typeof v === "string" ? `${root}/generated` : rewrite(v)]));
       }
-      return Object.fromEntries(Object.entries(value).filter(([k]) => k !== "recovery").map(([k, v]) => [k, k === "outputDir" && typeof v === "string" ? `${root}/generated` : rewrite(v)]));
-    }
-    return value;
-  };
-  const rewritten = rewrite(doc);
-  const changes = (await store.keys(root)).map(path => ({ path, bytes: null as Uint8Array | null }));
-  changes.push(...entries.map(e => ({ path: paths.get(`/${e.path}`)!, bytes: e === project ? new TextEncoder().encode(JSON.stringify(rewritten)) : e.bytes })));
-  await store.batch(changes); return destination;
-}
-function importChoice(name: string): Promise<"rename" | "replace" | "cancel"> {
-  return new Promise(resolve => {
-    const dialog = document.createElement("dialog"), title = document.createElement("p");
-    dialog.setAttribute("aria-label", "Import project name clash"); title.textContent = `Imported project "${name}" already exists.`; dialog.append(title);
-    for (const choice of ["rename", "replace", "cancel"] as const) {
-      const button = document.createElement("button"); button.textContent = choice.charAt(0).toUpperCase() + choice.slice(1);
-      button.onclick = () => { dialog.close(); dialog.remove(); resolve(choice); }; dialog.append(button);
-    }
-    dialog.oncancel = () => { dialog.remove(); resolve("cancel"); }; document.body.append(dialog); dialog.showModal();
+      return value;
+    };
+    const rewritten = rewrite(doc);
+    await locked.batch(entries.map(e => ({ path: paths.get(`/${e.path}`)!, bytes: e === project ? new TextEncoder().encode(JSON.stringify(rewritten)) : e.bytes })));
+    return destination;
   });
 }
