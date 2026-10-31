@@ -1,0 +1,8 @@
+body { display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+#root { min-height: 0; }
+.legal { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; padding: 2px 12px; font: 11px/1.4 sans-serif; background: var(--color-surface, Canvas); color: var(--color-text-muted, CanvasText); }
+.legal a { color: inherit; }
+@media (max-width: 599px) {
+  .legal { justify-content: center; padding: 0 8px; }
+  .legal a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }
+}

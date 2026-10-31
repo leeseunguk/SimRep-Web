@@ -1,37 +1,44 @@
 # Release engineering
 
-## Sources and prerequisites
+## Sources and pinned tools
 
-Clone with `git clone --recurse-submodules <repository-url>`. For an existing
-checkout use `git submodule update --init --recursive`. `simrep/` is a real
-submodule pinned to public SimRep commit `889f8c8`, including wasm portability,
-the app host hook, WebGL2 viewport fallback and Tauri lock file.
-Wrapper and numeric-probe dependencies resolve into `simrep/crates`.
-`web/scripts/link-app.mjs` creates ignored `web/.app-src` pointing at
-`simrep/app/src`. `SIMREP_APP_SRC`, relative to `web/` or absolute, overrides it
-for development. Leave it unset for releases.
+Clone with `git clone --recurse-submodules <repository-url>`. Existing checkouts
+use `git submodule update --init --recursive`. The real `simrep/` gitlink is
+`c767439184c4ba8e099daf1a05c1484e12defaa5`, including wasm portability,
+responsive phone/tablet layouts, touch controls, WebGL2 and Astra main-repo fixes.
+No retained build output is needed.
 
-Install Git, Node.js 24 with npm, a native C/C++ linker, and Rust through rustup.
-Rustup is required, not merely standalone cargo/rustc. Builds need registry and
-Rust distribution access. The wasm script installs wasm32-unknown-unknown and a
-local wasm-bindgen-cli pinned to 0.2.129. Threaded wasm uses nightly-2025-11-15
-with rust-src and atomics-enabled rebuilt std. Tool downloads live in ignored
-`.tools/`; `SIMREP_WASM_TOOLS` selects another tool cache. `CARGO_TARGET_DIR`
-overrides the Rust cache. Do not override `SIMREP_WASM_OUT_DIR` for a site build:
-the frontend needs its normal package paths.
+Use Node.js **24.14.1** (`.node-version`), npm with `npm ci`, Rust **1.95.0**
+(`rust-toolchain.toml`), wasm-bindgen-cli **0.2.129**, and threaded Rust
+**nightly-2025-11-15** with rust-src. Both wasm Cargo invocations use `--locked`.
+The scripts install the Rust target/toolchains and bindgen when absent. Git,
+rustup, a native C/C++ linker, registry and Rust distribution access are required.
+Tool downloads live in ignored `.tools/`; `SIMREP_WASM_TOOLS` selects a cache.
+`CARGO_TARGET_DIR` selects a compiler cache. Do not override `SIMREP_WASM_OUT_DIR`
+for a site build: frontend packages must be in their normal paths. The build
+clears `dist/` and remaps builder home/checkout paths out of distributed wasm.
+
+`web/scripts/link-app.mjs` resolves `SIMREP_APP_SRC` for development, relative to
+`web/` or absolute. Unsetting it restores the pinned submodule, even when an old
+`.app-src` link pointed elsewhere. `scripts/build.sh` unsets the override and
+checks that the submodule is clean and matches the gitlink before the app build.
 
 ## Build and QA
-
-From the repository root:
 
 ```sh
 bash scripts/build.sh
 ```
 
-This builds serial and threaded wasm, then runs `npm ci` and
-`npm run build:web -- --outDir ../dist` in `web/`. Deploy only root `dist/`
-contents, not sources, node_modules, target caches or evidence. Vite uses a
-relative base; verify asset and worker URLs for the deployment subpath.
+This builds serial and threaded wasm, runs `npm ci`, typechecks, builds Vite,
+and generates complete dependency notices. The notices generator traverses the
+wasm Cargo metadata closure and npm production dependency closure, including
+fonts and the isolation helper. It fails if a package has no complete license
+text. Three exact registry omissions explicitly elect their metadata-declared
+Apache-2.0 alternative using the full vendored standard text. Unknown omissions
+fail rather than silently acquiring a generic license. Root `LICENSE`,
+`THIRD_PARTY_NOTICES.md`, the Rust standard-library inventories and all linked
+texts are copied into `dist/` and linked from the application footer.
+Deploy only `dist/` contents.
 
 ```sh
 bash scripts/build-wasm.sh nodejs
@@ -50,35 +57,78 @@ node tests/einzel-browser.mjs
 node tests/desktop-commands.mjs
 node tests/desktop-cache.mjs
 node tests/desktop-integration.mjs
+node tests/review-browser.mjs
+node tests/review-node.mjs
+node tests/notices.mjs
+node tests/reproducibility.mjs
+node tests/preview-headers.mjs
+node tests/hygiene.mjs
 (cd web && npm run typecheck && npm test)
 (cd web && npm run e2e -- --project=chromium --project=webkit)
+(cd web && SIMREP_E2E_PREVIEW=1 npm run e2e -- e2e/web.spec.ts e2e/review.spec.ts e2e/phone.spec.ts --project=chromium --project=webkit)
 ```
 
-Einzel browser QA consumes the fixtures produced by `flight-physics.mjs`.
-Older harnesses may need PA fixtures under ignored `evidence/`; inspect their
-requirements. Build success alone is not a browser or identity verdict.
+The preview run serves built `dist/` with production CSP. The legacy WebGL pixel
+probe imports a source capture helper and runs on the development server; preview
+uses the real application, archive, reload, export, CSP and phone suites. Both
+engines have a 390x844 einzel case requiring canvas width >= 90% and no document
+or body horizontal overflow. Browser suites stop their own servers.
+Einzel browser identity consumes fixtures generated by `flight-physics.mjs`.
+A build alone is not an identity verdict.
 
-For extracted WebKit dependencies on Linux, set paths to the actual installation:
+For extracted WebKit dependencies on Linux, set `PLAYWRIGHT_BROWSERS_PATH`,
+`PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1` and `LD_LIBRARY_PATH` to the real
+browser installation and its `root/usr/lib/x86_64-linux-gnu` directory. Skipping
+validation does not install libraries. Linux WebKitGTK is not real Safari QA.
+Edge and Firefox are not independently certified. WebKit defaults to serial;
+explicit threaded pools there remain experimental. Application GPU compute stays
+gated off; WebGPU/WebGL2 rendering is separate.
+
+The upstream tracked-document scan also inspects PDFs and requires pypdf:
 
 ```sh
-export PLAYWRIGHT_BROWSERS_PATH=/path/to/playwright-browsers
-export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1
-export LD_LIBRARY_PATH=/path/to/webkit-root/usr/lib/x86_64-linux-gnu
-(cd web && npm run e2e -- --project=webkit)
+python3 -m venv .tools/hygiene
+.tools/hygiene/bin/pip install pypdf
+.tools/hygiene/bin/python simrep/tools/path_hygiene.py
 ```
 
-Skipping validation does not install libraries. Linux WebKitGTK is not real
-Safari verification. Chrome, Edge, Safari and Firefox can render the 3D view
-using WebGPU or WebGL2; WebGPU is preferred when available. The status bar
-reports the selected renderer even with the browser host installed. The
-unavailable-view card appears only if both renderer initializations fail.
-`web/e2e/webgl.spec.ts` removes `navigator.gpu` before startup and checks the
-real einzel flight, rendered scene pixels, and trajectory pixels in Chromium
-and WebKit. Frame comparisons wait for consecutive identical captures, not sleeps.
-Set `SIMREP_WEBGL_SHOTS` to an output directory to retain 1280-pixel light/dark
-screenshots. Application GPU compute stays gated off until simrep-fly provides
-a public field export. WebKit defaults to the serial CPU f64 package; explicit
-threaded pools there remain experimental.
+## Static hosting and isolation
+
+Use HTTPS/localhost. The build ships `web/public/_headers` with COOP `same-origin`,
+COEP `require-corp`, `Cache-Control: no-store` and a same-origin CSP. The preview
+server sends the same policies. CSP permits wasm compilation and same-origin/blob
+workers, local fonts, image data/blob URLs and report frames. It permits style
+attributes used by React but no inline scripts, external scripts or arbitrary
+outbound connections. Configure equivalent headers on hosts that do not interpret
+`_headers`; inspect actual HTML, worker JS and wasm responses with `curl -i`.
+
+Keep no-store: WebKit module-worker conditional cache revalidation can stall after
+reload. Verify `self.crossOriginIsolated === true`, initialized worker count,
+asset URLs and project reloads on the actual deployed subpath. Vite uses a relative
+base. GitHub Pages ignores `_headers`; the bundled coi-serviceworker helps with
+isolation but cannot supply the full deployment policy. Reliable WebKit reloads
+on Pages are not established; use a host with configurable headers for that QA.
+
+## Browser budgets and persistent data
+
+Inputs are limited to 128 MiB per file and 256 MiB per selection/project registry.
+ZIP imports allow 2,048 entries, 128 MiB per entry, 256 MiB total expanded bytes
+and a 200:1 ratio, enforced before and during inflate. Project documents are
+limited to 4 MiB and validated before publication. Imported projects use a new
+`-imported` namespace; clashes offer rename/replace/cancel, and replacement
+requires a second confirmation. All resources stay inside that namespace.
+
+Immutable OPFS/IndexedDB objects are published through one atomic manifest.
+Uncommitted/orphaned objects are never used on reload. Cuts identities bind hashes
+of the sidecar and its PA family; mismatches are ignored with a console warning.
+GEM inspection/build limits precede rasterization; FLY2/3MF checks precede native
+expansion, following the 3MF primary-model relationship rather than its filename.
+Worker file bytes are capped at 256 MiB, retained flights at 128 MiB, and trajectory
+sampling is bounded during integration. Closing a session releases its PA family
+and prepared geometry when no session still owns that family, without deleting
+unrelated pending registrations. Caller-owned source inputs can be explicitly
+removed; persisted files rehydrate on demand. These budgets do not imply that
+wasm linear memory returns its high-water allocation to the browser.
 
 ## Update the SimRep pin
 
@@ -88,38 +138,6 @@ git -C simrep checkout <reviewed-full-commit-id>
 git add simrep
 ```
 
-Rebuild wasm and the app, rerun identity and browser tests, inspect license
-changes, and record the full upstream revision. The repository records the
-gitlink, not copies of upstream source. Commit a verified pin update after review.
-
-## Static hosting and isolation
-
-Use HTTPS or localhost. Multicore needs COOP `same-origin` and COEP
-`require-corp`. The build copies `web/public/_headers` into `dist/_headers` for
-Netlify and Cloudflare Pages:
-
-```text
-/*
-  Cross-Origin-Opener-Policy: same-origin
-  Cross-Origin-Embedder-Policy: require-corp
-  Cache-Control: no-store
-```
-
-Keep the no-store policy: WebKit module-worker cache revalidation can stall after
-reload, even with the serial package. The release's Vite preview server sends it;
-the development server avoids conditional ETag responses. On other static hosts,
-configure equivalent response headers. Inspect actual headers on worker JS and
-wasm, not only HTML. No-store trades repeat-download bandwidth for reliable reloads.
-
-Set `dist` as the publish directory. Upload manually or through the host CLI;
-no GitHub Actions are required. Keep wasm, workers and fonts same-origin or
-provide correct CORS/CORP headers. Inspect actual response headers and verify
-`self.crossOriginIsolated === true` and actual worker count after deployment.
-
-GitHub Pages does not interpret `_headers`. The frontend ships and registers
-coi-serviceworker for hosts without custom isolation headers; the first controlled
-visit may reload once. When isolation is unavailable, use the serial fallback.
-Verify the deployed Pages subpath. WebKit release QA uses no-store headers;
-reliable WebKit reloads on Pages are not established by that QA. Use a host with
-configurable headers for the verified WebKit configuration.
-These build commands never push, deploy or invoke GitHub Actions.
+Rebuild and rerun identity/browser QA, inspect license changes, then record the
+full upstream revision. These build commands never push, deploy or invoke GitHub
+Actions. The responsive upstream pin now covers review finding M5.

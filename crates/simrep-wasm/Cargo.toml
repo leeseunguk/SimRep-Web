@@ -12,7 +12,6 @@ threads = ["dep:wasm-bindgen-rayon"]
 webgpu = ["simrep-solve/webgpu", "simrep-fly/webgpu", "dep:js-sys", "dep:wasm-bindgen-futures", "dep:serde-wasm-bindgen"]
 
 [dependencies]
-# simrep/ is a pinned SimRep submodule; development may use an equivalent symlink.
 simrep-core = { path = "../../simrep/crates/simrep-core" }
 simrep-io = { path = "../../simrep/crates/simrep-io", default-features = false }
 simrep-solve = { path = "../../simrep/crates/simrep-solve", default-features = false }
@@ -28,6 +27,8 @@ rayon = "1.12"
 web-time = "1.1.0"
 base64 = "0.22"
 bincode = "1.3"
+zip = { version = "9.0", default-features = false, features = ["deflate"] }
+quick-xml = "0.42"
 js-sys = { version = "0.3", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 serde-wasm-bindgen = { version = "0.6", optional = true }

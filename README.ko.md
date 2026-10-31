@@ -8,10 +8,10 @@ Rust 이온 광학 코어를 브라우저 WebAssembly 워커에서 실행합니�
 ## 구성과 빌드
 
 `simrep/`은 실제 SimRep 서브모듈이며
-`889f8c8`로 고정되어 있습니다(WebGL2 뷰포트 대체 경로와 Tauri 잠금 파일 포함).
+`c767439`로 고정되어 있습니다(휴대폰/태블릿 레이아웃, 터치 조작, WebGL2 및 Astra 검토 수정 포함).
 `crates/simrep-wasm/`은 계산 래퍼, `app/`은 데스크톱 명령 어댑터,
 `web/`은 UI와 IPC 워커입니다. UI 소스의 기본 위치는 `simrep/app/src`이고
-개발 시 `SIMREP_APP_SRC`로 바꿉니다.
+개발 시 `SIMREP_APP_SRC`로 바꿉니다. 릴리스 빌드는 깨끗한 고정 서브모듈을 사용합니다.
 
 ```sh
 git clone --recurse-submodules <repository-url>
@@ -19,9 +19,10 @@ cd <checkout>
 bash scripts/build.sh
 ```
 
-Rust는 rustup으로 설치하고 Node.js와 npm도 설치하세요. 스크립트는 wasm32
-타깃과 wasm-bindgen-cli 0.2.129를 준비하고 직렬/스레드 wasm 및 UI를 빌드하여
-최상위 `dist/`를 만듭니다. 스레드 빌드는 nightly-2025-11-15를 사용합니다.
+Rust는 rustup으로 설치하고 Node.js와 npm도 설치하세요. 직렬 Rust는 1.95.0,
+Node.js는 24.14.1로 고정합니다. 스크립트는 wasm32 타깃과 wasm-bindgen-cli
+0.2.129를 준비하고 직렬/스레드 wasm 및 UI를 빌드하여 깨끗한 최상위 `dist/`를
+만듭니다. 스레드 빌드는 nightly-2025-11-15를 사용합니다.
 서브모듈 업데이트, 검증 명령과 정적 호스팅은 [RELEASE.md](docs/RELEASE.md)에 있습니다.
 
 ## 기능과 제한
@@ -55,6 +56,10 @@ WebKit은 중첩 스레드 모듈 워커의 시작/새로고침이 간헐적으�
 두 API를 모두 사용할 수 없을 때만 3D 뷰 사용 불가 안내가 표시됩니다.
 가용성은 장치와 브라우저 정책에도 달려 있으며 WebGPU에는 보안 컨텍스트가 필요합니다.
 Linux WebKitGTK 결과는 실제 Safari 플랫폼 호환성을 증명하지 않습니다.
+
+고정된 UI는 휴대폰/태블릿 레이아웃과 터치 회전, 이동, 핀치 확대를 제공합니다.
+브라우저 E2E에는 390x844에서 실제 einzel 비행 후 캔버스가 너비의 90% 이상이고
+문서와 본문에 가로 스크롤이 없는지 확인하는 검증이 포함됩니다.
 
 GPU 계산은 simrep-fly의 공개 필드 내보내기가 제공될 때까지 앱에서
 비활성화되어 있습니다. 실험적 WebGPU API의 커널은 f32이며 외부 반복과

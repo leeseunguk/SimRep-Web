@@ -50,6 +50,10 @@ package because nested threaded module-worker loading intermittently stalls at
 startup or reload. Explicit thread requests remain experimental there; the
 supported WebKit path uses one CPU f64 worker and IndexedDB storage.
 
+The pinned UI provides phone/tablet layouts and touch orbit, pan and pinch zoom.
+The browser E2E suite includes a 390x844 real-worker einzel flight, requiring the
+canvas to occupy at least 90% of the width with no document/body horizontal scroll.
+
 ## Layout and build
 
 ```text
@@ -68,11 +72,13 @@ cd <checkout>
 bash scripts/build.sh
 ```
 
-Install Rust through rustup and Node.js with npm first. The script installs the
-wasm32 target, pins wasm-bindgen-cli 0.2.129, builds serial and threaded packages,
-and builds the web app into root `dist/`. Threaded wasm uses nightly-2025-11-15.
-The submodule is pinned to `889f8c8` (WebGL2 viewport fallback and Tauri lock file).
-`SIMREP_APP_SRC` overrides the default `simrep/app/src` for development.
+Install Rust through rustup and Node.js with npm first. Serial Rust is pinned to
+1.95.0 and Node.js to 24.14.1. The script installs the wasm32 target, pins
+wasm-bindgen-cli 0.2.129, builds serial and threaded packages, and builds a clean
+root `dist/`. Threaded wasm uses nightly-2025-11-15. The submodule is pinned to
+`c767439` (responsive layouts/touch, WebGL2 fixes and Astra main-repository fixes).
+`SIMREP_APP_SRC` overrides the default `simrep/app/src` for development; release
+builds require the clean gitlink and reset retained development links.
 See [RELEASE.md](docs/RELEASE.md) for prerequisites, pin updates and static hosting.
 
 ## Verification and hosting
@@ -81,6 +87,8 @@ Use HTTPS or localhost. Multicore requires COOP `same-origin` and COEP
 `require-corp`. Without isolation/SharedArrayBuffer, the serial package runs one
 worker and reports the fallback. Check actual rather than requested worker count.
 The shipped coi-serviceworker supports isolation on hosts without custom headers.
+The site also ships CSP headers and complete root/third-party licenses; configure
+these headers on the deployment host as described in the release instructions.
 
 ```sh
 cargo build --manifest-path simrep/Cargo.toml --locked --release -p simrep-cli

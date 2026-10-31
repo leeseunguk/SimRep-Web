@@ -6,10 +6,11 @@ evidence. Historical worker-local paths have been replaced with portable artifac
 locations; those historical artifacts are not shipped here.
 
 The earlier integration baseline was SimRep
-`0a3dd20e3adc1b9a67c0810d13338b047b7beb27`. The release now pins public commit
-`6d2dd8c813541a012afa21023a4c555fd991d25a`, including wasm portability and the
-app host hook, as a real submodule. No development symlink or unpublished patch
-is required.
+`0a3dd20e3adc1b9a67c0810d13338b047b7beb27`. That historical integration used
+`6d2dd8c813541a012afa21023a4c555fd991d25a`. The current release pins public
+`c767439184c4ba8e099daf1a05c1484e12defaa5` as a real submodule, including
+wasm portability, app host hooks, responsive layouts/touch and the WebGL2/Astra
+main-repository fixes. No development symlink or unpublished patch is required.
 
 ## Historical findings (not reverified by this document)
 
