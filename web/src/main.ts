@@ -25,11 +25,16 @@ async function boot() {
     store: s.status === "fulfilled" ? s.value : memoryStore(),
     shim,
   };
-  // Read-only facts for the e2e tests and support questions (no handles, no file contents).
+  // Read-only support/e2e facts and a PNG of the visible viewport, without backend handles.
   (window as unknown as { __simrepWeb: unknown }).__simrepWeb = {
     storage: state.store.kind,
     capabilities: state.backend?.capabilities ?? null,
     backendError: state.backendError,
+    async captureViewport() {
+      const viewport = await import("../.app-src/viewport/viewState");
+      await viewport.settleViewportLayout();
+      return viewport.captureViewport();
+    },
   };
   const { installHost } = await import("./host");
   installHost(state);
