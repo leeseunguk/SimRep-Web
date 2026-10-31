@@ -4,9 +4,9 @@
 
 Clone with `git clone --recurse-submodules <repository-url>`. For an existing
 checkout use `git submodule update --init --recursive`. `simrep/` is a real
-submodule pinned to public SimRep commit
-`6d2dd8c813541a012afa21023a4c555fd991d25a`, including the wasm portability and
-app host hook. Wrapper and numeric-probe dependencies resolve into `simrep/crates`.
+submodule pinned to public SimRep commit `889f8c8`, including wasm portability,
+the app host hook, WebGL2 viewport fallback and Tauri lock file.
+Wrapper and numeric-probe dependencies resolve into `simrep/crates`.
 `web/scripts/link-app.mjs` creates ignored `web/.app-src` pointing at
 `simrep/app/src`. `SIMREP_APP_SRC`, relative to `web/` or absolute, overrides it
 for development. Leave it unset for releases.
@@ -51,8 +51,7 @@ node tests/desktop-commands.mjs
 node tests/desktop-cache.mjs
 node tests/desktop-integration.mjs
 (cd web && npm run typecheck && npm test)
-(cd web && npm run e2e -- --project=chromium)
-(cd web && npm run e2e -- --project=webkit)
+(cd web && npm run e2e -- --project=chromium --project=webkit)
 ```
 
 Einzel browser QA consumes the fixtures produced by `flight-physics.mjs`.
@@ -69,10 +68,17 @@ export LD_LIBRARY_PATH=/path/to/webkit-root/usr/lib/x86_64-linux-gnu
 ```
 
 Skipping validation does not install libraries. Linux WebKitGTK is not real
-Safari verification. Chrome/Edge 113+ require available WebGPU for the 3D view;
-Safari/Firefox use computation without that view. Application GPU compute stays
-gated off until simrep-fly provides a public field export. WebKit defaults to the
-serial CPU f64 package; explicit threaded pools there remain experimental.
+Safari verification. Chrome, Edge, Safari and Firefox can render the 3D view
+using WebGPU or WebGL2; WebGPU is preferred when available. The status bar
+reports the selected renderer even with the browser host installed. The
+unavailable-view card appears only if both renderer initializations fail.
+`web/e2e/webgl.spec.ts` removes `navigator.gpu` before startup and checks the
+real einzel flight, rendered scene pixels, and trajectory pixels in Chromium
+and WebKit. Frame comparisons wait for consecutive identical captures, not sleeps.
+Set `SIMREP_WEBGL_SHOTS` to an output directory to retain 1280-pixel light/dark
+screenshots. Application GPU compute stays gated off until simrep-fly provides
+a public field export. WebKit defaults to the serial CPU f64 package; explicit
+threaded pools there remain experimental.
 
 ## Update the SimRep pin
 

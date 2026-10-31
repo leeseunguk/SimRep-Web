@@ -21,7 +21,7 @@ The browser application wraps the pinned SimRep desktop app sources.
 | Uniform B, scalar magnetic PA, coils | CPU flight | Additional magnetic APIs |
 | Scientific exports | In-memory PA, mesh, VTI/VTS, CSV/VTP | Native files |
 | Multicore CPU | Optional Rayon, up to four workers, isolation required; WebKit defaults to one | Native Rayon |
-| 3D view | WebGPU required | Native GPU |
+| 3D view | WebGPU when available, WebGL2 fallback | Native GPU |
 | GPU compute | Gated off in the application | Native GPU |
 | Executable Lua, CAD, coupled space charge, gas collisions, native filesystem/AI | Not exposed | Desktop APIs |
 
@@ -37,16 +37,18 @@ a documented exception.
 
 | Browser | Computation and UI | 3D view | Verification scope |
 | --- | --- | --- | --- |
-| Chrome/Edge 113+ | CPU WebAssembly, up to four workers | Requires available WebGPU | Chromium automation; Edge not separately tested |
-| Safari | CPU WebAssembly, one worker by default | Unavailable in the supported fallback | WebKit tested on Linux WebKitGTK, not real Safari |
-| Firefox | CPU WebAssembly | Unavailable in the supported fallback | Not tested in this release |
+| Chrome/Edge | CPU WebAssembly, up to four workers | WebGPU or WebGL2 | Chromium automation, including WebGPU disabled; Edge not separately tested |
+| Safari | CPU WebAssembly, one worker by default | WebGPU or WebGL2 | WebKit tested on Linux WebKitGTK, not real Safari |
+| Firefox | CPU WebAssembly | WebGPU or WebGL2 | Not tested in this release |
 
-Safari and Firefox can compute without the 3D view. WebGPU availability also
-depends on device, browser policy and a secure context. Linux WebKitGTK results
-must not be interpreted as real Safari platform verification. WebKit defaults to
-the serial package because nested threaded module-worker loading intermittently
-stalls at startup or reload. Explicit thread requests remain experimental there;
-the supported WebKit path uses one CPU f64 worker and IndexedDB storage.
+The 3D view uses WebGPU when available and falls back to WebGL2. The status bar
+reports `Renderer: WebGPU` or `Renderer: WebGL2`; an unavailable-view card appears
+only when neither API works. Availability depends on device and browser policy;
+WebGPU also requires a secure context. Linux WebKitGTK results must not be
+interpreted as real Safari platform verification. WebKit defaults to the serial
+package because nested threaded module-worker loading intermittently stalls at
+startup or reload. Explicit thread requests remain experimental there; the
+supported WebKit path uses one CPU f64 worker and IndexedDB storage.
 
 ## Layout and build
 
@@ -69,7 +71,7 @@ bash scripts/build.sh
 Install Rust through rustup and Node.js with npm first. The script installs the
 wasm32 target, pins wasm-bindgen-cli 0.2.129, builds serial and threaded packages,
 and builds the web app into root `dist/`. Threaded wasm uses nightly-2025-11-15.
-The submodule is pinned to `6d2dd8c813541a012afa21023a4c555fd991d25a`.
+The submodule is pinned to `889f8c8` (WebGL2 viewport fallback and Tauri lock file).
 `SIMREP_APP_SRC` overrides the default `simrep/app/src` for development.
 See [RELEASE.md](docs/RELEASE.md) for prerequisites, pin updates and static hosting.
 
@@ -93,7 +95,7 @@ node tests/flight-physics.mjs
 node tests/einzel-browser.mjs
 cargo build -p simrep-wasm --example desktop-reference
 node tests/desktop-commands.mjs
-(cd web && npm run typecheck && npm test && npm run e2e -- --project=chromium)
+(cd web && npm run typecheck && npm test && npm run e2e -- --project=chromium --project=webkit)
 ```
 
 Install browsers with `(cd web && npx playwright install chromium webkit)`.

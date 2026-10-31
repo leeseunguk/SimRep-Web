@@ -8,7 +8,7 @@ Rust 이온 광학 코어를 브라우저 WebAssembly 워커에서 실행합니�
 ## 구성과 빌드
 
 `simrep/`은 실제 SimRep 서브모듈이며
-`6d2dd8c813541a012afa21023a4c555fd991d25a`로 고정되어 있습니다.
+`889f8c8`로 고정되어 있습니다(WebGL2 뷰포트 대체 경로와 Tauri 잠금 파일 포함).
 `crates/simrep-wasm/`은 계산 래퍼, `app/`은 데스크톱 명령 어댑터,
 `web/`은 UI와 IPC 워커입니다. UI 소스의 기본 위치는 `simrep/app/src`이고
 개발 시 `SIMREP_APP_SRC`로 바꿉니다.
@@ -46,12 +46,14 @@ WebKit은 중첩 스레드 모듈 워커의 시작/새로고침이 간헐적으�
 
 | 브라우저 | 계산 및 UI | 3D 뷰 | 검증 범위 |
 | --- | --- | --- | --- |
-| Chrome/Edge 113+ | CPU WebAssembly, 최대 워커 4개 | 사용 가능한 WebGPU 필요 | Chromium 자동화, Edge 별도 미검증 |
-| Safari | CPU WebAssembly, 기본 워커 1개 | 지원하는 대체 경로에서는 비활성 | Linux WebKitGTK 검증, 실제 Safari 아님 |
-| Firefox | CPU WebAssembly | 지원하는 대체 경로에서는 비활성 | 이번 릴리스에서 미검증 |
+| Chrome/Edge | CPU WebAssembly, 최대 워커 4개 | WebGPU 또는 WebGL2 | WebGPU 비활성 Chromium 포함 자동화, Edge 별도 미검증 |
+| Safari | CPU WebAssembly, 기본 워커 1개 | WebGPU 또는 WebGL2 | Linux WebKitGTK 검증, 실제 Safari 아님 |
+| Firefox | CPU WebAssembly | WebGPU 또는 WebGL2 | 이번 릴리스에서 미검증 |
 
-3D 뷰에는 WebGPU가 필요합니다. Safari/Firefox에서는 3D 뷰 없이 계산을
-사용합니다. WebGPU 가용성은 장치와 브라우저 정책에도 달려 있습니다.
+3D 뷰는 사용 가능한 경우 WebGPU를 사용하고, 그렇지 않으면 WebGL2로 대체합니다.
+상태 표시줄에는 `Renderer: WebGPU` 또는 `Renderer: WebGL2`가 표시됩니다.
+두 API를 모두 사용할 수 없을 때만 3D 뷰 사용 불가 안내가 표시됩니다.
+가용성은 장치와 브라우저 정책에도 달려 있으며 WebGPU에는 보안 컨텍스트가 필요합니다.
 Linux WebKitGTK 결과는 실제 Safari 플랫폼 호환성을 증명하지 않습니다.
 
 GPU 계산은 simrep-fly의 공개 필드 내보내기가 제공될 때까지 앱에서
@@ -65,7 +67,7 @@ GPU 계산은 simrep-fly의 공개 필드 내보내기가 제공될 때까지 �
 ```sh
 (cd web && npm run typecheck && npm test)
 (cd web && npx playwright install chromium webkit)
-(cd web && npm run e2e -- --project=chromium)
+(cd web && npm run e2e -- --project=chromium --project=webkit)
 ```
 
 Linux에서 추출한 WebKit 의존성 번들을 사용하는 경우 실제 설치 경로를 지정합니다.
