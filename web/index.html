@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="SimRep ion optics simulator in the browser: SIMION arrays, refine and ion flight on the CPU in WebAssembly." />
+    <title>SimRep</title>
+    <!-- Cross-origin isolation on static hosts that cannot send COOP/COEP headers (no-op when they do). -->
+    <script src="./coi-serviceworker.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>SimRep needs JavaScript and WebAssembly.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

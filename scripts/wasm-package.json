@@ -1,0 +1,8 @@
+{
+  "name": "simrep-wasm",
+  "private": true,
+  "type": "module",
+  "main": "./simrep_wasm.js",
+  "module": "./simrep_wasm.js",
+  "sideEffects": true
+}

@@ -1,0 +1,67 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
+const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const source = path.join(root, "evidence/flight-node");
+const output = path.join(root, "evidence/exports");
+const core = process.env.SIMREP_CORE ?? path.join(root, "simrep");
+const binary = process.env.SIMREP_BIN ?? path.join(core, "target/release/simrep");
+await mkdir(output, { recursive: true });
+const { WasmBackend } = createRequire(import.meta.url)(path.join(root,"target/node-pkg/simrep_wasm.js"));
+const backend = new WasmBackend();
+for (const suffix of ["pa#","pa0","pa1","pa2","pa3","cuts.json"]) backend.put_file(`einzel.${suffix}`,await readFile(path.join(source,`einzel.${suffix}`)));
+backend.put_file("ions.ion",await readFile(path.join(core,"examples/data/ions.ion")));
+backend.open_pa("hash","einzel.pa#"); backend.open_pa("solved","einzel.pa0");
+const surface = { angularSegments: 64, sweepDegrees: 360, extrusionDepthMm: 1 };
+const comparisons = [];
+for (const format of ["stl","obj","gltf","glb"]) {
+  const filename = `geometry.${format}`;
+  const expectedPath = path.join(output,filename);
+  await promisify(execFile)(binary,["export","geometry",path.join(source,"einzel.pa#"),expectedPath]);
+  const names = JSON.parse(backend.export_array(JSON.stringify({id:"hash",path:filename,voltages:[],placement:null,what:{kind:"geometry",surface,names:[]}})));
+  assert.deepEqual(names,[filename]);
+  const actual = backend.read_file(filename);
+  await writeFile(`${expectedPath}.wasm`,actual);
+  comparisons.push({format,equal:Buffer.from(actual).equals(await readFile(expectedPath)),bytes:actual.length});
+  if (format === "gltf") {
+    const document = JSON.parse(new TextDecoder().decode(actual));
+    assert.equal(document.asset.version,"2.0");
+    assert.ok(document.meshes.length > 0);
+    assert.ok(Buffer.from(document.buffers[0].uri.split(",")[1],"base64").length > 0);
+  }
+}
+await promisify(execFile)(binary,["export","grid",path.join(source,"einzel.pa0"),path.join(output,"field.vti")]);
+backend.export_array(JSON.stringify({id:"solved",path:"field.vti",voltages:[],what:{kind:"grid",field:true,angularSegments:64,sweepDegrees:360}}));
+const grid = backend.read_file("field.vti");
+comparisons.push({format:"vti",equal:Buffer.from(grid).equals(await readFile(path.join(output,"field.vti"))),bytes:grid.length});
+await writeFile(path.join(output,"field.vti.wasm"),grid);
+backend.export_array(JSON.stringify({id:"solved",path:"iso.gltf",voltages:[],what:{kind:"isosurface",potential:20,surface}}));
+assert.ok(JSON.parse(new TextDecoder().decode(backend.read_file("iso.gltf"))).meshes.length > 0);
+const request = { id:"solved",source:{kind:"file",path:"ions.ion"},durationUs:10,relativistic:false,precision:"precise",draw:8,surfaces:true,plane:[1,0,0,58],tolerance:1e-12,maxStepUs:Number.MAX_VALUE };
+assert.equal(backend.export_trajectories(JSON.stringify(request),"tracks.csv"),8);
+assert.equal(backend.export_trajectories(JSON.stringify(request),"tracks.vtp"),8);
+const csv = backend.read_file("tracks.csv");
+const vtp = backend.read_file("tracks.vtp");
+await writeFile(path.join(output,"tracks.csv"),csv); await writeFile(path.join(output,"tracks.vtp"),vtp);
+const rows = new TextDecoder().decode(csv).trim().split("\n").slice(1).map((line)=>line.split(",").map(Number));
+const last = rows.at(-1);
+const marker = Buffer.from('<AppendedData encoding="raw">_');
+const start = Buffer.from(vtp).indexOf(marker)+marker.length;
+assert.ok(start >= marker.length);
+const view = new DataView(vtp.buffer,vtp.byteOffset,vtp.byteLength);
+assert.equal(Number(view.getBigUint64(start,true)),rows.length*8);
+assert.equal(view.getFloat64(start+8+(rows.length-1)*8,true),last[1]);
+const velocity = start+8+rows.length*8+8;
+for (let a=0;a<3;a++) assert.equal(view.getFloat64(velocity+(rows.length-1)*24+a*8,true),last[5+a]);
+const paFiles = JSON.parse(backend.export_array(JSON.stringify({id:"solved",path:"copy.pa0",voltages:[],what:{kind:"pa",format:"pa0"}})));
+assert.deepEqual(paFiles,["copy.pa0","copy.pa1","copy.pa2","copy.pa3"]);
+for (const suffix of ["pa0","pa1","pa2","pa3"]) assert.deepEqual(backend.read_file(`copy.${suffix}`),new Uint8Array(await readFile(path.join(source,`einzel.${suffix}`))));
+await writeFile(path.join(output,"checks.json"),JSON.stringify({comparisons,trajectories:8,points:rows.length,paFiles},null,2));
+for (const comparison of comparisons) assert.ok(comparison.equal,`${comparison.format}: native/wasm export bytes differ`);
+console.log(JSON.stringify({comparisons,trajectories:8,points:rows.length,paFiles},null,2));
+backend.free();

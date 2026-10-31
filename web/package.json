@@ -1,0 +1,43 @@
+{
+  "name": "simrep-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "link-app": "node scripts/link-app.mjs",
+    "predev:web": "node scripts/link-app.mjs",
+    "dev:web": "vite --mode web",
+    "prebuild:web": "node scripts/link-app.mjs",
+    "build:web": "tsc --noEmit && tsc --noEmit -p tsconfig.backend.json && vite build --mode web",
+    "preview:web": "vite preview --mode web --port 4173 --strictPort",
+    "pretypecheck": "node scripts/link-app.mjs",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.backend.json && tsc --noEmit -p tsconfig.test.json",
+    "pretest": "node scripts/link-app.mjs",
+    "test": "vitest run",
+    "pree2e": "node scripts/link-app.mjs",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "@fontsource/ibm-plex-sans-kr": "5.3.0",
+    "@tauri-apps/api": "2.12.4",
+    "@tauri-apps/plugin-dialog": "2.8.3",
+    "lucide-react": "1.61.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zustand": "5.0.16"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "@webgpu/types": "0.1.74",
+    "coi-serviceworker": "0.1.7",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}

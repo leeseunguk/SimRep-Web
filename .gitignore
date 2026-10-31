@@ -1,0 +1,12 @@
+.tools/
+target/
+evidence/
+pkg/
+pkg-threads/
+dist*/
+node_modules/
+.vite/
+.app-src
+test-results/
+playwright-report/
+*.tmp.*

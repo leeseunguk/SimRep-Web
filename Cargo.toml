@@ -1,0 +1,8 @@
+[workspace]
+resolver = "3"
+members = ["crates/simrep-wasm"]
+exclude = ["simrep"]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
