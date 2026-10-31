@@ -1,4 +1,4 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -10,18 +10,12 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-/** Exercise the shipped PNG exporter, waiting for two identical scene captures. */
+/** Capture the actual browser surface, waiting for two identical viewport frames. */
 async function settled(page: Page) {
   let previous: string | undefined;
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
-    await page.locator('[data-tour="results-export"]').getByRole("button", { name: "Export", exact: true }).click();
-    const pending = page.waitForEvent("download");
-    await page.getByRole("menuitem", { name: "3D view" }).click();
-    const download = await pending;
-    const file = await download.path();
-    if (!file) throw new Error("3D view export did not produce a local PNG");
-    const bytes = await readFile(file);
+    const bytes = await page.getByRole("region", { name: "3D view", exact: true }).locator("canvas").screenshot({ animations: "disabled", scale: "css" });
     const encoded = bytes.toString("base64");
     if (encoded !== previous) {
       previous = encoded;
@@ -38,7 +32,7 @@ async function settled(page: Page) {
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(image, 0, 0);
       const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      // Reconstruct the capture background to distinguish scene pixels from an empty gradient.
+      // Reconstruct the viewport background to distinguish scene pixels from an empty gradient.
       const css = getComputedStyle(document.documentElement);
       const rx = 1.2 * canvas.width;
       const ry = 0.9 * canvas.height;
