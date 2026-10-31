@@ -38,4 +38,6 @@ else
 fi
 "$bindgen" --target "$target" --out-dir "$out" "$CARGO_TARGET_DIR/wasm32-unknown-unknown/release/simrep_wasm.wasm"
 if [[ "$target" == web ]]; then cp "$root/scripts/wasm-package.json" "$out/package.json"; fi
+node "$root/scripts/wasm-freshness.mjs" record "$out"
+node "$root/scripts/wasm-freshness.mjs" check "$out"
 printf 'Generated %s package at %s\n' "$kind" "$out"

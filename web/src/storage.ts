@@ -143,7 +143,11 @@ export function manifestStore(raw: RawStore): FileStore {
         notify();
       },
     };
-    return operation(scoped);
+    const result = await operation(scoped);
+    // A suspended reader may have lost its immutable objects to a new owner's
+    // collection. Never return that stale snapshot as a successful absence.
+    await guard();
+    return result;
   });
   return {
     kind: raw.kind, transaction,

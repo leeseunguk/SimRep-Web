@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtemp, mkdir, copyFile, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+const root = await mkdtemp(path.join(tmpdir(), 'simrep-freshness-'));
+const run = (cmd, args) => spawnSync(cmd, args, { cwd: root, encoding: 'utf8' });
+try {
+  await mkdir(path.join(root, 'scripts'));
+  await mkdir(path.join(root, 'pkg'));
+  await copyFile(new URL('../scripts/wasm-freshness.mjs', import.meta.url), path.join(root, 'scripts/wasm-freshness.mjs'));
+  await writeFile(path.join(root, 'lib.rs'), 'pub fn original() {}\n');
+  await writeFile(path.join(root, 'pkg/test.wasm'), Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]));
+  assert.equal(run('git', ['init', '-q']).status, 0);
+  assert.equal(run('git', ['add', 'lib.rs', 'scripts/wasm-freshness.mjs']).status, 0);
+  const check = mode => run(process.execPath, ['scripts/wasm-freshness.mjs', mode, 'pkg']);
+  assert.notEqual(check('check').status, 0, 'unproven old package must fail');
+  assert.equal(check('record').status, 0);
+  assert.equal(check('check').status, 0);
+  await writeFile(path.join(root, 'lib.rs'), 'pub fn changed() {}\n');
+  const staleSource = check('check');
+  assert.notEqual(staleSource.status, 0);
+  assert.match(staleSource.stderr, /Stale wasm package/);
+  assert.equal(check('record').status, 0);
+  await writeFile(path.join(root, 'pkg/test.wasm'), 'stale bytes');
+  const staleOutput = check('check');
+  assert.notEqual(staleOutput.status, 0);
+  assert.match(staleOutput.stderr, /Stale wasm package/);
+  console.log('PASS missing provenance, changed Rust source, and changed package bytes are rejected; matching package accepted');
+} finally { await rm(root, { recursive: true, force: true }); }
