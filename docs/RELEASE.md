@@ -4,8 +4,8 @@
 
 Clone with `git clone --recurse-submodules <repository-url>`. Existing checkouts
 use `git submodule update --init --recursive`. The real `simrep/` gitlink is
-`c767439184c4ba8e099daf1a05c1484e12defaa5`, including wasm portability,
-responsive phone/tablet layouts, touch controls, WebGL2 and Astra main-repo fixes.
+`2705fec645038a4aa6b8f1975aec382fdff01584`, including wasm portability,
+responsive phone/tablet layouts, touch controls, WebGL2, accessibility, UI polish and Astra main-repo fixes.
 No retained build output is needed.
 
 Use Node.js **24.14.1** (`.node-version`), npm with `npm ci`, Rust **1.95.0**

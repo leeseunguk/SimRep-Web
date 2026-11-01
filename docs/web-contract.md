@@ -1,7 +1,7 @@
 # Browser computation contract
 
 Historical API baseline: public SimRep `6d2dd8c813541a012afa21023a4c555fd991d25a`.
-Current gitlink: `c767439184c4ba8e099daf1a05c1484e12defaa5`. CPU f64 geometry,
+Current gitlink: `2705fec645038a4aa6b8f1975aec382fdff01584`. CPU f64 geometry,
 cooperative refinement, flight and exports run inside a WebAssembly module worker.
 Inputs and outputs are caller-owned bytes; there is no computation server.
 Historical backend identity results are described in `web-performance.md`; current

@@ -6,6 +6,11 @@ SimRep-Web runs the Rust ion-optics core locally in browser WebAssembly workers.
 Geometry, electrostatic refinement and particle flight need no computation server.
 The browser application wraps the pinned SimRep desktop app sources.
 
+![Einzel lens refined and flown in the browser, with trajectories and flight results](docs/images/web-hero-light.png)
+
+The einzel template after refinement and a 40-ion flight, with the lens fitted to the view.
+All screenshots are captured from the built site in headless Chromium using the WebGL2 fallback.
+
 ## Features and limits
 
 | Feature | Browser backend | Desktop SimRep |
@@ -33,6 +38,28 @@ not select GPU compute. See [GPU API](docs/webgpu.md) and
 can differ by two ULPs between native and wasm; strict OBJ byte identity remains
 a documented exception.
 
+![Browser AI dialog explaining why the assistant needs the desktop app](docs/images/web-desktop-only.png)
+
+Unavailable desktop-only features explain their limits instead of requesting credentials.
+
+### Templates, geometry and results
+
+![Start screen with four templates, four CPU workers and browser-local storage status](docs/images/web-start.png)
+
+Start with a template or open local files; the status bar reports actual workers and storage.
+
+![GEM import wizard showing the three electrodes of an einzel lens](docs/images/web-import-gem.png)
+
+A real `einzel.gem` file in the geometry wizard, before grid building and refinement.
+
+![Time-of-flight histogram and statistics from a 40-ion flight](docs/images/web-results.png)
+
+Inspect flight distributions and statistics alongside the simulated trajectories.
+
+![The same refined einzel lens and flight results in the dark theme](docs/images/web-hero-dark.png)
+
+The same browser workflow in the dark theme.
+
 ## Browser support
 
 | Browser | Computation and UI | 3D view | Verification scope |
@@ -53,6 +80,10 @@ supported WebKit path uses one CPU f64 worker and IndexedDB storage.
 The pinned UI provides phone/tablet layouts and touch orbit, pan and pinch zoom.
 The browser E2E suite includes a 390x844 real-worker einzel flight, requiring the
 canvas to occupy at least 90% of the width with no document/body horizontal scroll.
+
+![390x844 phone layout with einzel trajectories and Scene, Simulation and Results tabs](docs/images/web-phone.png)
+
+The real einzel flight at phone width, with the Scene, Simulation and Results tabs.
 
 ## Layout and build
 
@@ -76,7 +107,7 @@ Install Rust through rustup and Node.js with npm first. Serial Rust is pinned to
 1.95.0 and Node.js to 24.14.1. The script installs the wasm32 target, pins
 wasm-bindgen-cli 0.2.129, builds serial and threaded packages, and builds a clean
 root `dist/`. Threaded wasm uses nightly-2025-11-15. The submodule is pinned to
-`c767439` (responsive layouts/touch, WebGL2 fixes and Astra main-repository fixes).
+`2705fec` (responsive layouts/touch, WebGL2 fallback, accessibility and UI polish, Astra review fixes).
 `SIMREP_APP_SRC` overrides the default `simrep/app/src` for development; release
 builds require the clean gitlink and reset retained development links.
 See [RELEASE.md](docs/RELEASE.md) for prerequisites, pin updates and static hosting.
