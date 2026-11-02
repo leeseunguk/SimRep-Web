@@ -8,7 +8,7 @@ locations; those historical artifacts are not shipped here.
 The earlier integration baseline was SimRep
 `0a3dd20e3adc1b9a67c0810d13338b047b7beb27`. That historical integration used
 `6d2dd8c813541a012afa21023a4c555fd991d25a`. The current release pins public
-`2705fec645038a4aa6b8f1975aec382fdff01584` as a real submodule, including
+`ba3fcbcb26450b3a64975f9583fb385c72ec1dd0` as a real submodule, including
 wasm portability, app host hooks, responsive layouts/touch and the WebGL2/Astra
 main-repository fixes. No development symlink or unpublished patch is required.
 

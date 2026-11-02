@@ -4,7 +4,7 @@
 
 Clone with `git clone --recurse-submodules <repository-url>`. Existing checkouts
 use `git submodule update --init --recursive`. The real `simrep/` gitlink is
-`2705fec645038a4aa6b8f1975aec382fdff01584`, including wasm portability,
+`ba3fcbcb26450b3a64975f9583fb385c72ec1dd0`, including wasm portability,
 responsive phone/tablet layouts, touch controls, WebGL2, accessibility, UI polish and Astra main-repo fixes.
 No retained build output is needed.
 

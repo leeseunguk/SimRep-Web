@@ -13,7 +13,7 @@ Rust 이온 광학 코어를 브라우저 WebAssembly 워커에서 실행합니�
 ## 구성과 빌드
 
 `simrep/`은 실제 SimRep 서브모듈이며
-`2705fec`로 고정되어 있습니다(휴대폰/태블릿 레이아웃, 터치 조작, WebGL2 대체 경로, 접근성·화면 다듬기, Astra 검토 수정 포함).
+`ba3fcbc`로 고정되어 있습니다(휴대폰/태블릿 레이아웃, 터치 조작, WebGL2 대체 경로, 접근성·화면 다듬기, Astra 검토 수정 포함).
 `crates/simrep-wasm/`은 계산 래퍼, `app/`은 데스크톱 명령 어댑터,
 `web/`은 UI와 IPC 워커입니다. UI 소스의 기본 위치는 `simrep/app/src`이고
 개발 시 `SIMREP_APP_SRC`로 바꿉니다. 릴리스 빌드는 깨끗한 고정 서브모듈을 사용합니다.

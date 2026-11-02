@@ -107,7 +107,7 @@ Install Rust through rustup and Node.js with npm first. Serial Rust is pinned to
 1.95.0 and Node.js to 24.14.1. The script installs the wasm32 target, pins
 wasm-bindgen-cli 0.2.129, builds serial and threaded packages, and builds a clean
 root `dist/`. Threaded wasm uses nightly-2025-11-15. The submodule is pinned to
-`2705fec` (responsive layouts/touch, WebGL2 fallback, accessibility and UI polish, Astra review fixes).
+`ba3fcbc` (responsive layouts/touch, WebGL2 fallback, accessibility and UI polish, Astra review fixes).
 `SIMREP_APP_SRC` overrides the default `simrep/app/src` for development; release
 builds require the clean gitlink and reset retained development links.
 See [RELEASE.md](docs/RELEASE.md) for prerequisites, pin updates and static hosting.
